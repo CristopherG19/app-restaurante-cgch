@@ -38,22 +38,35 @@
             </div>
           </div>
 
-          <!-- Client (for Factura) -->
-          <div v-if="form.tipo_comprobante === 'FACTURA'" class="space-y-3">
-            <label class="label">Datos del Cliente (RUC)</label>
+          <!-- Client info (for Boleta and Factura) -->
+          <div v-if="form.tipo_comprobante !== 'NOTA_VENTA'" class="space-y-3">
+            <label class="label">
+              <span v-if="form.tipo_comprobante === 'FACTURA'">Datos del Cliente (RUC)</span>
+              <span v-else>Datos del Cliente (DNI)</span>
+              <span v-if="form.tipo_comprobante === 'BOLETA'" class="text-xs text-gray-500 ml-2">
+                {{ total >= 700 ? '- Obligatorio' : '- Opcional' }}
+              </span>
+            </label>
             <div class="flex gap-2">
               <input 
                 v-model="clienteDoc" 
                 type="text" 
                 class="input" 
-                placeholder="RUC (11 dígitos)"
-                maxlength="11"
+                :placeholder="form.tipo_comprobante === 'FACTURA' ? 'RUC (11 dígitos)' : 'DNI (8 dígitos)'"
+                :maxlength="form.tipo_comprobante === 'FACTURA' ? 11 : 8"
               />
               <button @click="buscarCliente" class="btn-secondary">Buscar</button>
             </div>
+            
+            <!-- Info message for high-value boletas -->
+            <p v-if="form.tipo_comprobante === 'BOLETA' && total >= 700" class="text-xs text-amber-600 flex items-center gap-1">
+              <Icon name="alert-circle" :size="14" />
+              Montos ≥ S/ 700 requieren DNI del cliente según SUNAT
+            </p>
+            
             <div v-if="cliente" class="p-3 bg-accent-50 rounded-lg">
               <p class="font-medium">{{ cliente.razon_social || cliente.nombres }}</p>
-              <p class="text-sm text-gray-600">{{ cliente.direccion }}</p>
+              <p class="text-sm text-gray-600">{{ cliente.numero_documento }}</p>
             </div>
           </div>
 
@@ -169,7 +182,7 @@ const emit = defineEmits(['close', 'success'])
 const cartStore = useCartStore()
 
 const tiposComprobante = [
-  { value: 'NOTA_VENTA', label: 'Nota de Venta' },
+  { value: 'NOTA_VENTA', label: 'Boleta Simple' },
   { value: 'BOLETA', label: 'Boleta' },
   { value: 'FACTURA', label: 'Factura' }
 ]
@@ -198,10 +211,14 @@ const vuelto = computed(() =>
   montoRecibido.value - total.value
 )
 
-const canProcess = computed(() => 
-  totalPagado.value >= total.value && 
-  (form.tipo_comprobante !== 'FACTURA' || cliente.value)
-)
+const canProcess = computed(() => {
+  const requiereCliente = 
+    form.tipo_comprobante === 'FACTURA' || 
+    (form.tipo_comprobante === 'BOLETA' && total.value >= 700)
+  
+  return totalPagado.value >= total.value && 
+         (!requiereCliente || cliente.value)
+})
 
 function addPago() {
   pagos.value.push({ metodo: 'efectivo', monto: restante.value })

@@ -81,6 +81,22 @@ class VentasController {
             $params['estado'] = $query['estado'];
         }
         
+        // Search by voucher number or client  
+        if (!empty($query['buscar'])) {
+            $busqueda = '%' . $query['buscar'] . '%';
+            $sql .= " AND (
+                v.serie LIKE :buscar1 OR
+                v.numero = :numero OR
+                c.nombres LIKE :buscar2 OR
+                c.numero_documento LIKE :buscar3
+            )";
+            $params['buscar1'] = $busqueda;
+            $params['buscar2'] = $busqueda;
+            $params['buscar3'] = $busqueda;
+            // Try to match numero if it's numeric
+            $params['numero'] = is_numeric($query['buscar']) ? intval($query['buscar']) : -1;
+        }
+        
         $sql .= " ORDER BY v.created_at DESC LIMIT 100";
         
         $stmt = $this->db->prepare($sql);
@@ -89,6 +105,7 @@ class VentasController {
         $ventas = $stmt->fetchAll();
         
         foreach ($ventas as &$venta) {
+            $venta['numero_comprobante'] = $venta['serie'] . '-' . str_pad($venta['numero'], 8, '0', STR_PAD_LEFT);
             $venta['total_formato'] = MONEDA_SIMBOLO . ' ' . number_format($venta['total'], 2);
         }
         
@@ -139,6 +156,7 @@ class VentasController {
         $pagosStmt->execute(['id' => $id]);
         $venta['pagos'] = $pagosStmt->fetchAll();
         
+        $venta['numero_comprobante'] = $venta['serie'] . '-' . str_pad($venta['numero'], 8, '0', STR_PAD_LEFT);
         $venta['total_formato'] = MONEDA_SIMBOLO . ' ' . number_format($venta['total'], 2);
         
         Response::json($venta);
@@ -189,6 +207,19 @@ class VentasController {
             $igv = round($totalConDescuento * (IGV_PORCENTAJE / (100 + IGV_PORCENTAJE)), 2);
             $subtotal = round($totalConDescuento - $igv, 2);
             $total = round($totalConDescuento, 2);
+            
+            // Validate client data based on voucher type and amount
+            $idCliente = $data['id_cliente'] ?? null;
+            
+            if ($tipoComprobante === TIPO_FACTURA && !$idCliente) {
+                $this->db->rollBack();
+                Response::error('Las facturas requieren un cliente con RUC', 400);
+            }
+            
+            if ($tipoComprobante === TIPO_BOLETA && $total >= 700 && !$idCliente) {
+                $this->db->rollBack();
+                Response::error('Boletas de S/ 700 o más requieren DNI del cliente según SUNAT', 400);
+            }
             
             // Create sale
             $stmt = $this->db->prepare("
@@ -246,6 +277,46 @@ class VentasController {
                     'cantidad' => $item['cantidad'],
                     'id' => $item['id_producto']
                 ]);
+            }
+            
+            // Close associated comanda if payment is complete and there's a mesa
+            if (!empty($data['id_mesa']) && $totalPagado >= $total) {
+                // Find open comanda for this table in this cash session
+                $comandaStmt = $this->db->prepare("
+                    SELECT id FROM pos_comandas 
+                    WHERE id_mesa = :id_mesa 
+                      AND id_caja_sesion = :id_caja
+                      AND estado NOT IN ('cerrada', 'cancelada')
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                ");
+                $comandaStmt->execute([
+                    'id_mesa' => $data['id_mesa'],
+                    'id_caja' => $caja['id']
+                ]);
+                $comanda = $comandaStmt->fetch();
+                
+                if ($comanda) {
+                    // Close the comanda
+                    $this->db->prepare("
+                        UPDATE pos_comandas 
+                        SET id_venta = :venta_id, estado = 'cerrada', fecha_cierre = NOW()
+                        WHERE id = :id
+                    ")->execute([
+                        'venta_id' => $ventaId,
+                        'id' => $comanda['id']
+                    ]);
+                    
+                    // Free table if no other active orders
+                    $this->db->prepare("
+                        UPDATE pos_mesas SET estado = 'libre' 
+                        WHERE id = :id
+                          AND NOT EXISTS (
+                              SELECT 1 FROM pos_comandas 
+                              WHERE id_mesa = :id2 AND estado NOT IN ('cerrada', 'cancelada')
+                          )
+                    ")->execute(['id' => $data['id_mesa'], 'id2' => $data['id_mesa']]);
+                }
             }
             
             $this->db->commit();

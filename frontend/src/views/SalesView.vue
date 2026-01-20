@@ -37,7 +37,7 @@
           <label class="label">Tipo Comprobante</label>
           <select v-model="filtros.tipo" class="input" @change="fetchVentas">
             <option :value="null">Todos</option>
-            <option value="TICKET">Ticket</option>
+            <option value="NOTA_VENTA">Boleta Simple</option>
             <option value="BOLETA">Boleta</option>
             <option value="FACTURA">Factura</option>
           </select>
@@ -110,12 +110,12 @@
               <span 
                 class="badge"
                 :class="{
-                  'badge-info': venta.tipo_comprobante === 'TICKET',
+                  'badge-info': venta.tipo_comprobante === 'NOTA_VENTA',
                   'badge-success': venta.tipo_comprobante === 'BOLETA',
                   'badge-primary': venta.tipo_comprobante === 'FACTURA'
                 }"
               >
-                {{ venta.tipo_comprobante }}
+                {{ venta.tipo_comprobante === 'NOTA_VENTA' ? 'Boleta Simple' : venta.tipo_comprobante }}
               </span>
             </td>
             <td class="px-4 py-3 text-right">
@@ -191,6 +191,29 @@
 
           <!-- Modal Content -->
           <div class="p-6 space-y-4 max-h-96 overflow-y-auto">
+            <!-- Sale info (NUEVO) -->
+            <div v-if="ventaDetalle" class="bg-primary-50 rounded-xl p-4">
+              <h3 class="font-semibold mb-2">Información del Comprobante</h3>
+              <div class="text-sm space-y-1">
+                <p>
+                  <span class="text-gray-600">Tipo:</span> 
+                  <span class="font-medium">{{ ventaDetalle.tipo_comprobante === 'NOTA_VENTA' ? 'Boleta Simple' : ventaDetalle.tipo_comprobante }}</span>
+                </p>
+                <p>
+                  <span class="text-gray-600">Número:</span> 
+                  <span class="font-medium">{{ ventaDetalle.numero_comprobante }}</span>
+                </p>
+                <p>
+                  <span class="text-gray-600">Fecha:</span> 
+                  {{ formatDate(ventaDetalle.fecha_emision) }} {{ formatTime(ventaDetalle.fecha_emision) }}
+                </p>
+                <p>
+                  <span class="text-gray-600">Atendido por:</span> 
+                  <span class="font-medium">{{ ventaDetalle.usuario_nombre }}</span>
+                </p>
+              </div>
+            </div>
+
             <!-- Client info -->
             <div v-if="ventaDetalle" class="bg-gray-50 rounded-xl p-4">
               <h3 class="font-semibold mb-2">Cliente</h3>
