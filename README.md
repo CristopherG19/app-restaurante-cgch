@@ -354,6 +354,18 @@ Para configurar impresoras térmicas o de tickets, revisar la documentación en 
 
 Este proyecto es de código abierto bajo licencia MIT.
 
+## 💖 Apoya el Proyecto
+
+Si este proyecto te ha sido útil y quieres apoyar su desarrollo continuo, considera hacer una donación:
+
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-❤️-red?logo=github&logoColor=white)](https://github.com/sponsors/CristopherG19)
+
+Tu apoyo ayuda a:
+- 🚀 Desarrollar nuevas características
+- 🐛 Corregir errores y mejorar el rendimiento
+- 📚 Mantener la documentación actualizada
+- 💡 Implementar ideas de la comunidad
+
 ## 👨‍💻 Autor
 
 **Cristopher G.**
