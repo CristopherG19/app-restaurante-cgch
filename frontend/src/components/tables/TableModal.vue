@@ -1,94 +1,99 @@
 <template>
-  <Teleport to="body">
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl shadow-xl max-w-md w-full">
-        <!-- Header -->
-        <div class="p-6 border-b border-gray-100">
-          <div class="flex items-center justify-between">
-            <div>
-              <h2 class="text-xl font-bold text-gray-900">{{ mesa.nombre }}</h2>
-              <span 
-                class="badge mt-1"
-                :class="getStatusBadgeClass(mesa.estado)"
-              >
-                {{ getStatusLabel(mesa.estado) }}
-              </span>
-            </div>
-            <button @click="$emit('close')" class="btn-icon text-gray-400">
-              <Icon name="x" :size="20" />
-            </button>
-          </div>
+  <BaseModal
+    :show="true"
+    :title="mesa.nombre"
+    variant="primary"
+    size="md"
+    @close="$emit('close')"
+  >
+    <!-- Custom header content for status badge -->
+    <template #header>
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold text-blue-900">{{ mesa.nombre }}</h2>
+          <span 
+            class="inline-block mt-2 px-3 py-1 rounded-full text-xs font-semibold"
+            :class="getStatusBadgeColorClass(mesa.estado)"
+          >
+            {{ getStatusLabel(mesa.estado) }}
+          </span>
         </div>
+        <button 
+          @click="$emit('close')" 
+          class="btn-icon text-blue-900/60 hover:text-blue-900 hover:bg-black/5 transition-all"
+        >
+          <Icon name="x" :size="20" />
+        </button>
+      </div>
+    </template>
 
-        <!-- Content -->
-        <div class="p-6">
-          <!-- Order info if exists -->
-          <div v-if="mesa.comanda_actual" class="mb-6">
-            <h3 class="font-semibold mb-3">Cuenta Actual</h3>
-            <div class="bg-gray-50 rounded-xl p-4 space-y-2">
-              <div class="flex justify-between">
-                <span class="text-gray-600">Comanda:</span>
-                <span class="font-medium">{{ mesa.comanda_actual.numero }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">Items:</span>
-                <span>{{ mesa.comanda_actual.items_count }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">Comensales:</span>
-                <span>{{ mesa.comanda_actual.comensales }}</span>
-              </div>
-              <div class="flex justify-between pt-2 border-t">
-                <span class="font-semibold">Total:</span>
-                <span class="font-bold text-primary-600 text-lg">
-                  S/ {{ parseFloat(mesa.comanda_actual.total).toFixed(2) }}
-                </span>
-              </div>
-            </div>
+    <!-- Content -->
+    <div class="space-y-6">
+      <!-- Order info if exists -->
+      <div v-if="mesa.comanda_actual">
+        <h3 class="font-semibold mb-3">Cuenta Actual</h3>
+        <div class="bg-gray-50 rounded-xl p-4 space-y-2">
+          <div class="flex justify-between">
+            <span class="text-gray-600">Comanda:</span>
+            <span class="font-medium">{{ mesa.comanda_actual.numero }}</span>
           </div>
-
-          <!-- Actions -->
-          <div class="space-y-3">
-            <button 
-              v-if="mesa.estado === 'ocupada'"
-              @click="goToPOS"
-              class="btn-primary w-full"
-            >
-              <Icon name="plus" :size="18" />
-              Agregar Items
-            </button>
-            
-            <button 
-              v-if="mesa.comanda_actual"
-              @click="cobrarMesa"
-              class="btn-success w-full"
-            >
-              <Icon name="credit-card" :size="18" />
-              Cobrar Cuenta
-            </button>
-
-            <button 
-              v-if="mesa.estado !== 'libre'"
-              @click="liberarMesa"
-              class="btn-secondary w-full"
-            >
-              <Icon name="unlock" :size="18" />
-              Liberar Mesa
-            </button>
-
-            <button 
-              v-if="mesa.estado === 'libre'"
-              @click="ocuparMesa"
-              class="btn-primary w-full"
-            >
-              <Icon name="clipboard" :size="18" />
-              Nueva Comanda
-            </button>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Items:</span>
+            <span>{{ mesa.comanda_actual.items_count }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Comensales:</span>
+            <span>{{ mesa.comanda_actual.comensales }}</span>
+          </div>
+          <div class="flex justify-between pt-2 border-t">
+            <span class="font-semibold">Total:</span>
+            <span class="font-bold text-primary-600 text-lg">
+              S/ {{ parseFloat(mesa.comanda_actual.total).toFixed(2) }}
+            </span>
           </div>
         </div>
       </div>
+
+      <!-- Actions -->
+      <div class="space-y-3">
+        <button 
+          v-if="mesa.estado === 'ocupada'"
+          @click="goToPOS"
+          class="btn-primary w-full"
+        >
+          <Icon name="plus" :size="18" />
+          Agregar Items
+        </button>
+        
+        <button 
+          v-if="mesa.comanda_actual"
+          @click="cobrarMesa"
+          class="btn-success w-full"
+        >
+          <Icon name="credit-card" :size="18" />
+          Cobrar Cuenta
+        </button>
+
+        <button 
+          v-if="mesa.estado !== 'libre'"
+          @click="liberarMesa"
+          class="btn-secondary w-full"
+        >
+          <Icon name="unlock" :size="18" />
+          Liberar Mesa
+        </button>
+
+        <button 
+          v-if="mesa.estado === 'libre'"
+          @click="ocuparMesa"
+          class="btn-primary w-full"
+        >
+          <Icon name="clipboard" :size="18" />
+          Nueva Comanda
+        </button>
+      </div>
     </div>
-  </Teleport>
+  </BaseModal>
 
   <!-- Payment Modal -->
   <PaymentModal 
@@ -104,6 +109,7 @@ import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { useTablesStore } from '@/stores/tables'
 import { comandasApi } from '@/services/api'
+import BaseModal from '@/components/ui/BaseModal.vue'
 import Icon from '@/components/ui/Icon.vue'
 import PaymentModal from '@/components/pos/PaymentModal.vue'
 
@@ -119,13 +125,14 @@ const tablesStore = useTablesStore()
 
 const showPaymentModal = ref(false)
 
-function getStatusBadgeClass(estado) {
-  return {
-    'badge-success': estado === 'libre',
-    'badge-danger': estado === 'ocupada',
-    'badge-warning': estado === 'cuenta',
-    'badge-info': estado === 'reservada'
+function getStatusBadgeColorClass(estado) {
+  const classes = {
+    libre: 'bg-green-500 text-white',
+    ocupada: 'bg-red-500 text-white',
+    cuenta: 'bg-amber-500 text-white',
+    reservada: 'bg-blue-500 text-white'
   }
+  return classes[estado] || 'bg-gray-500 text-white'
 }
 
 function getStatusLabel(estado) {

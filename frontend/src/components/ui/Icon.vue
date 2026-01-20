@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Menu,
   X,
+  XCircle,
   
   // Restaurant & Food
   ChefHat,
@@ -62,6 +63,7 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  Printer,
   
   // User roles
   User,
@@ -186,6 +188,10 @@ const iconMap = {
   'eye-off': EyeOff,
   'loader': Loader2,
   'loading': Loader2,
+  'printer': Printer,
+  'print': Printer,
+  'x-circle': XCircle,
+  'cancel': XCircle,
   
   // User roles
   'user': User,

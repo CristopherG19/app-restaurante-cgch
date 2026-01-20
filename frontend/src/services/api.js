@@ -92,8 +92,10 @@ export const ventasApi = {
   create: (data) => api.post('/ventas', data),
   crearDesdeComanda: (data) => api.post('/ventas/desde-comanda', data),
   getTicket: (id) => api.get(`/ventas/${id}/ticket`),
+  getPDF: (id) => `${API_URL}/ventas/${id}/pdf`, // Return URL for PDF
   anular: (id) => api.put(`/ventas/${id}/anular`)
 }
+
 
 export const cajaApi = {
   getActual: () => api.get('/caja/actual'),

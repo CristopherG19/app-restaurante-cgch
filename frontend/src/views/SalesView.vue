@@ -141,12 +141,12 @@
                 <button 
                   @click="imprimirTicket(venta.id)" 
                   class="btn-icon text-gray-500 hover:text-blue-600"
-                  title="Imprimir ticket"
+                  title="Imprimir PDF"
                 >
                   <Icon name="printer" :size="18" />
                 </button>
                 <button 
-                  v-if="venta.estado === 'pagada' && userStore.user.rol === 'admin'"
+                  v-if="venta.estado === 'pagada' && userStore.user?.rol === 'admin'"
                   @click="confirmarAnular(venta)" 
                   class="btn-icon text-gray-500 hover:text-red-600"
                   title="Anular venta"
@@ -173,119 +173,19 @@
     </div>
 
     <!-- Detail Modal -->
-    <Teleport v-if="showDetailModal" to="body">
-      <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
-          <!-- Modal Header -->
-          <div class="p-6 border-b border-gray-100">
-            <div class="flex items-center justify-between">
-              <div>
-                <h2 class="text-xl font-bold text-gray-900">Detalle de Venta</h2>
-                <p class="text-sm text-gray-500">{{ selectedVenta?.numero_comprobante }}</p>
-              </div>
-              <button @click="closeDetailModal" class="btn-icon text-gray-400">
-                <Icon name="x" :size="20" />
-              </button>
-            </div>
-          </div>
+    <SaleDetailModal 
+      :show="showDetailModal"
+      :venta="selectedVenta"
+      @close="closeDetailModal"
+    />
 
-          <!-- Modal Content -->
-          <div class="p-6 space-y-4 max-h-96 overflow-y-auto">
-            <!-- Sale info (NUEVO) -->
-            <div v-if="ventaDetalle" class="bg-primary-50 rounded-xl p-4">
-              <h3 class="font-semibold mb-2">Información del Comprobante</h3>
-              <div class="text-sm space-y-1">
-                <p>
-                  <span class="text-gray-600">Tipo:</span> 
-                  <span class="font-medium">{{ ventaDetalle.tipo_comprobante === 'NOTA_VENTA' ? 'Boleta Simple' : ventaDetalle.tipo_comprobante }}</span>
-                </p>
-                <p>
-                  <span class="text-gray-600">Número:</span> 
-                  <span class="font-medium">{{ ventaDetalle.numero_comprobante }}</span>
-                </p>
-                <p>
-                  <span class="text-gray-600">Fecha:</span> 
-                  {{ formatDate(ventaDetalle.fecha_emision) }} {{ formatTime(ventaDetalle.fecha_emision) }}
-                </p>
-                <p>
-                  <span class="text-gray-600">Atendido por:</span> 
-                  <span class="font-medium">{{ ventaDetalle.usuario_nombre }}</span>
-                </p>
-              </div>
-            </div>
 
-            <!-- Client info -->
-            <div v-if="ventaDetalle" class="bg-gray-50 rounded-xl p-4">
-              <h3 class="font-semibold mb-2">Cliente</h3>
-              <div class="text-sm space-y-1">
-                <p><span class="text-gray-600">Nombre:</span> {{ ventaDetalle.cliente_nombres || 'Cliente genérico' }}</p>
-                <p v-if="ventaDetalle.cliente_documento">
-                  <span class="text-gray-600">Documento:</span> {{ ventaDetalle.cliente_documento }}
-                </p>
-              </div>
-            </div>
-
-            <!-- Items -->
-            <div v-if="ventaDetalle">
-              <h3 class="font-semibold mb-2">Items</h3>
-              <div class="space-y-2">
-                <div 
-                  v-for="item in ventaDetalle.detalles" 
-                  :key="item.id"
-                  class="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
-                >
-                  <div>
-                    <p class="font-medium">{{ item.producto_nombre }}</p>
-                    <p class="text-sm text-gray-500">{{ item.cantidad }} x S/ {{ parseFloat(item.precio_unitario).toFixed(2) }}</p>
-                  </div>
-                  <p class="font-bold text-primary-600">S/ {{ parseFloat(item.subtotal).toFixed(2) }}</p>
-                </div>
-              </div>
-            </div>
-
-            <!-- Totals -->
-            <div v-if="ventaDetalle" class="bg-primary-50 rounded-xl p-4 space-y-2">
-              <div class="flex justify-between text-sm">
-                <span class="text-gray-600">Subtotal:</span>
-                <span>S/ {{ parseFloat(ventaDetalle.subtotal).toFixed(2) }}</span>
-              </div>
-              <div class="flex justify-between text-sm">
-                <span class="text-gray-600">IGV (18%):</span>
-                <span>S/ {{ parseFloat(ventaDetalle.igv).toFixed(2) }}</span>
-              </div>
-              <div class="flex justify-between text-lg font-bold pt-2 border-t border-primary-200">
-                <span>Total:</span>
-                <span class="text-primary-600">S/ {{ parseFloat(ventaDetalle.total).toFixed(2) }}</span>
-              </div>
-            </div>
-
-            <!-- Payment info -->
-            <div v-if="ventaDetalle && ventaDetalle.pagos?.length" class="bg-gray-50 rounded-xl p-4">
-              <h3 class="font-semibold mb-2">Pagos</h3>
-              <div class="space-y-2">
-                <div v-for="pago in ventaDetalle.pagos" :key="pago.id" class="text-sm">
-                  <span class="font-medium">{{ pago.metodo_pago }}:</span>
-                  <span class="ml-2">S/ {{ parseFloat(pago.monto).toFixed(2) }}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- User and date -->
-            <div v-if="ventaDetalle" class="text-xs text-gray-500 pt-2 border-t">
-              <p>Registrado por: {{ ventaDetalle.usuario_nombre }}</p>
-              <p>Fecha: {{ formatDate(ventaDetalle.fecha_emision) }} {{ formatTime(ventaDetalle.fecha_emision) }}</p>
-            </div>
-          </div>
-
-          <!-- Modal Footer -->
-          <div class="p-6 border-t border-gray-100">
-            <button @click="closeDetailModal" class="btn-secondary w-full">
-              Cerrar
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <!-- Print Format Modal -->
+    <PrintFormatModal 
+      :show="showPrintModal" 
+      @close="showPrintModal = false"
+      @select="handlePrintFormat"
+    />
   </div>
 </template>
 
@@ -294,16 +194,19 @@ import { ref, onMounted } from 'vue'
 import { ventasApi } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import Icon from '@/components/ui/Icon.vue'
+import PrintFormatModal from '@/components/modals/PrintFormatModal.vue'
+import SaleDetailModal from '@/components/sales/SaleDetailModal.vue'
 
 const userStore = useAuthStore()
 
 // State
 const ventas = ref([])
-const ventaDetalle = ref(null)
 const loading = ref(false)
 const showDetailModal = ref(false)
 const selectedVenta = ref(null)
 const totalVentas = ref(0)
+const showPrintModal = ref(false)
+const printVentaId = ref(null)
 
 // Filters
 const filtros = ref({
@@ -385,41 +288,40 @@ async function fetchVentas() {
 }
 
 // View detail
-async function verDetalle(venta) {
+function verDetalle(venta) {
   selectedVenta.value = venta
   showDetailModal.value = true
-  
-  try {
-    const { data } = await ventasApi.getOne(venta.id)
-    if (data.success) {
-      ventaDetalle.value = data.data
-    }
-  } catch (error) {
-    console.error('Error fetching sale detail:', error)
-  }
 }
 
 function closeDetailModal() {
   showDetailModal.value = false
   selectedVenta.value = null
-  ventaDetalle.value = null
 }
 
-// Print ticket
-async function imprimirTicket(ventaId) {
+// Print ticket with format selector modal
+function imprimirTicket(ventaId) {
+  printVentaId.value = ventaId
+  showPrintModal.value = true
+}
+
+// Handle format selection from modal
+function handlePrintFormat(formato) {
+  if (!printVentaId.value) return
+  
   try {
-    const { data } = await ventasApi.getTicket(ventaId)
-    if (data.success) {
-      // Open in new window or download
-      const blob = new Blob([data.data], { type: 'text/plain' })
-      const url = window.URL.createObjectURL(blob)
-      window.open(url, '_blank')
-    }
+    // Get PDF URL with format parameter
+    const pdfUrl = `${ventasApi.getPDF(printVentaId.value)}?formato=${formato}`
+    window.open(pdfUrl, '_blank')
+    
+    // Close modal
+    showPrintModal.value = false
+    printVentaId.value = null
   } catch (error) {
-    console.error('Error printing ticket:', error)
-    alert('Error al obtener el ticket')
+    console.error('Error al abrir el ticket:', error)
+    alert('Error al generar el ticket')
   }
 }
+
 
 // Anular venta
 function confirmarAnular(venta) {

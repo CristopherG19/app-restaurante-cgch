@@ -16,6 +16,8 @@ class VentasController {
             case 'GET':
                 if ($action === 'ticket' && $id) {
                     $this->getTicket($id);
+                } elseif ($action === 'pdf' && $id) {
+                    $this->getPDF($id);
                 } elseif ($id) {
                     $this->getOne($id);
                 } else {
@@ -645,4 +647,88 @@ class VentasController {
         
         Response::json(['message' => 'Venta anulada exitosamente']);
     }
+    
+    /**
+     * GET /ventas/{id}/pdf - Generate and serve PDF
+     * Query params: ?formato=ticket|a4|a3 (default: auto based on type)
+     */
+    private function getPDF(string $id): void {
+        require_once __DIR__ . '/../helpers/PDFGenerator.php';
+        
+        // Get formato from query params
+        $query = Response::getQuery();
+        $formato = $query['formato'] ?? 'auto'; // ticket, a4, a3, auto
+        
+        // Get sale with all details
+        $stmt = $this->db->prepare("
+            SELECT v.*, 
+                   c.tipo_documento as cliente_tipo_doc,
+                   c.numero_documento as cliente_documento,
+                   c.nombres as cliente_nombres,
+                   c.apellidos as cliente_apellidos,
+                   c.razon_social as cliente_razon_social,
+                   c.direccion as cliente_direccion,
+                   u.nombre as usuario_nombre
+            FROM ventas v
+            LEFT JOIN clientes c ON v.id_cliente = c.id
+            LEFT JOIN usuarios u ON v.id_usuario = u.id
+            WHERE v.id = :id
+        ");
+        $stmt->execute(['id' => $id]);
+        $venta = $stmt->fetch();
+        
+        if (!$venta) {
+            Response::error('Venta no encontrada', 404);
+        }
+        
+        // Get business config
+        $configStmt = $this->db->query("
+            SELECT clave, valor FROM configuracion WHERE grupo = 'negocio'
+        ");
+        $config = [];
+        while ($row = $configStmt->fetch()) {
+            $config[$row['clave']] = $row['valor'];
+        }
+        
+        // Get details
+        $detStmt = $this->db->prepare("
+            SELECT * FROM venta_detalles WHERE id_venta = :id ORDER BY id
+        ");
+        $detStmt->execute(['id' => $id]);
+        $detalles = $detStmt->fetchAll();
+        
+        // Get payments
+        $pagosStmt = $this->db->prepare("
+            SELECT * FROM pagos WHERE id_venta = :id ORDER BY fecha
+        ");
+        $pagosStmt->execute(['id' => $id]);
+        $pagos = $pagosStmt->fetchAll();
+        
+        // Generate QR data
+        $qrData = $this->generateQRData($venta, $config);
+        
+        // Generate PDF
+        $generator = new PDFGenerator($config, $venta, $detalles, $pagos, $qrData);
+        $pdfContent = $generator->generar($formato);
+        
+        // Clear any previous output
+        if (ob_get_length()) ob_end_clean();
+        
+        // Set PDF headers
+        header('Content-Type: application/pdf');
+        header('Content-Length: ' . strlen($pdfContent));
+        
+        $filename = $venta['tipo_comprobante'] . '_' . 
+                    $venta['serie'] . '-' . 
+                    str_pad($venta['numero'], 8, '0', STR_PAD_LEFT) . '.pdf';
+        
+        header('Content-Disposition: inline; filename="' . $filename . '"');
+        header('Cache-Control: private, max-age=0, must-revalidate');
+        header('Pragma: public');
+        
+        // Output PDF
+        echo $pdfContent;
+        exit;
+    }
 }
+
